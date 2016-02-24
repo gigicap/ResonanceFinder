@@ -22,7 +22,7 @@ n_scans = 20;	//number of scans
 
 //Beam variables
 width =  0.005; //percentile
-run_time = 1.0;	//beam spread, run time (in s)
+run_time = 1000.0;	//beam spread, run time (in s)
 N_total = 1.0e10;			//total number of gammas per bunch/second
 
 //Target and detector variables
@@ -30,13 +30,18 @@ z_target = 0.15;
 rho_target = 6.1e20;
 Sigma_beam = 100;
 
-detector_efficiency = 0.2; //set to have reasonable values 
+detector_efficiency = 0.17; //set to have reasonable values (105cs/s of signal at resonance)
 detector_Omega = 0.5;
 
 //resonances
 E_reso.push_back(2.2);
-W_reso.push_back(8.2e-6);
+W_reso.push_back(6.2e-6);
 I_reso.push_back(64); //in b 
+/*
+E_reso.push_back(2.24);
+W_reso.push_back(8.2e-6);
+I_reso.push_back(120); //in b 
+*/
 
 //cuts
 e_cut = 1.8;
@@ -45,11 +50,11 @@ if(UseBkg){
 TFile *f = new TFile("background.root","READ");
 hbkg = (TH1D*)f->Get("hbackground");
 }
-else N_background = 120*run_time;
+else N_background = 110*run_time; //reasonable from CDR
 
 }
 
-void ResonanceSimulator::RunTheSimulator(){
+void ResonanceSimulator::RunTheSimulator(TFile *f_output){
 
 double E_central = (E_max + E_min)/2;
 
@@ -93,7 +98,7 @@ for (int j = 0; j < n_scans; ++j)
 	delete Beam;
 }
 
-if(DoVerbose) PlotResults();
+if(DoVerbose) PlotResults(f_output);
 
 return;
 }
@@ -202,16 +207,15 @@ std::vector<double> ResonanceSimulator::GetNRSCounts(){
 }
 
 
-void ResonanceSimulator::PlotResults(){
+void ResonanceSimulator::PlotResults(TFile *f_output){
 
 if (DoVerbose) std::cout<<"---Make a canvas"<<std::endl;
-TCanvas *can = new TCanvas("can","",1200,1000);
-can->Divide(2,2);
+
 
 //canvas 1: background
 if (DoVerbose) std::cout<<"---c1"<<std::endl;
 if(UseBkg){
-can->cd(1);
+TCanvas *c1 = new TCanvas("can1","",600,500);
 hbkg->GetXaxis()->SetTitle("E [MeV]");
 hbkg->GetYaxis()->SetTitle("Counts");
 double hbkgmax = hbkg->GetMaximum();
@@ -224,11 +228,12 @@ leg1->AddEntry("ecutline","energy cut","l");
 hbkg->Draw();
 ecutline->Draw("same");
 leg1->Draw("same");
+f_output->WriteTObject(c1);
 }
 //canvas2: Energy scanning
 if (DoVerbose) std::cout<<"---c2"<<std::endl;
 
-can->cd(2);
+TCanvas *c2 = new TCanvas("can2","",600,500);
 
 int n = (int)energy_tracker.size();
 double x[n];
@@ -244,10 +249,13 @@ grScan->GetXaxis()->SetTitle("Step");
 grScan->GetYaxis()->SetTitle("Central energy[MeV]");
 grScan->Draw("ACP");
 
+f_output->WriteTObject(c2);
+
 //canvas3: hcounts e risonanze
 if (DoVerbose) std::cout<<"---c3"<<std::endl;
 
-can->cd(3);
+TCanvas *c3 = new TCanvas("can3","",600,500);
+
 hcounts[0]->SetLineColor(2);
 hcounts[0]->Draw();
 for (size_t i = 1; i < hcounts.size(); ++i){
@@ -264,10 +272,12 @@ for (size_t j = 0; j < hcounts.size(); ++j){
 }
 for (size_t j = 0; j < hcounts.size(); ++j) resolines[j]->Draw("same");
 
+f_output->WriteTObject(c3);
+
 //canvas4: N_NRS for all the scans
 if (DoVerbose) std::cout<<"---c4"<<std::endl;
 
-can->cd(4);
+TCanvas *c4 = new TCanvas("can4","",600,500);
 
 double nnrss[n];
 for (int i = 0; i < n; ++i){
@@ -280,6 +290,9 @@ grNRS->SetTitle("NRS counts during scan");
 grNRS->GetXaxis()->SetTitle("Step");
 grNRS->GetYaxis()->SetTitle("NRS Counts");
 grNRS->Draw("ACP");
+
+f_output->WriteTObject(c4);
+
 
 if (DoVerbose) std::cout<<"---exit"<<std::endl;
 return;

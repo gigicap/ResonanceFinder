@@ -6,6 +6,7 @@
 // Root includes 
 #include "TAxis.h"
 #include "TGraph.h"
+#include "TGraphErrors.h"
 #include "TMultiGraph.h"
 #include "TCanvas.h"
 #include "TApplication.h"
@@ -28,10 +29,12 @@
 
 using namespace std;
 
-void ResonanceFinder(bool IsSimulation, bool IsVerbose){
+void ResonanceFinder(bool IsSimulation, bool IsVerbose, TFile *f_output){
 
 int N_channels = 0;
 int N_scans = 0;
+
+double NRS_CUT = 10000.0;
 
 if (IsVerbose) std::cout<<"---Start resonance finder"<<std::endl;
 
@@ -49,7 +52,7 @@ else{
 	if (IsVerbose) std::cout<<"---Initialising simulator"<<std::endl;
 	ResonanceSimulator *theSimulator = new ResonanceSimulator(IsVerbose, use_bkg_file);
 	if (IsVerbose) std::cout<<"---Running the simulator"<<std::endl;
-	theSimulator->RunTheSimulator();
+	theSimulator->RunTheSimulator(f_output);
 
 	if (IsVerbose) std::cout<<"---Getting outputs"<<std::endl;
 
@@ -73,7 +76,7 @@ double error_matrix[N_scans][N_channels];
 
 for (int i = 0; i < N_scans; i++){
 	for(size_t j = 0; j<N_channels; j++){
-		if (NRScounts[i] == 0){
+		if (NRScounts[i] < NRS_CUT){
 		scan_matrix[i][j] = 0;
 		error_matrix[i][j] = 0;
 		}
@@ -85,28 +88,39 @@ for (int i = 0; i < N_scans; i++){
 }
 
 double delta[N_channels];
+double deltaerr[N_channels];
+
 for (int j = 0; j < N_channels; ++j){
 	double minval = 10e22;
 	double maxval = -10e22;
-
+	double error1 = 0;
+	double error2 = 0;
 	for (int i = 0; i < N_scans; ++i){
-		if(scan_matrix[i][j] < minval) minval = scan_matrix[i][j];
-		if(scan_matrix[i][j] > maxval) maxval = scan_matrix[i][j];
+		if(scan_matrix[i][j] < minval){ 
+			minval = scan_matrix[i][j];
+			error1 = error_matrix[i][j];
+			}
+		if(scan_matrix[i][j] > maxval){ 
+			maxval = scan_matrix[i][j];
+			error2 = error_matrix[i][j];
+		}
 	}
 	delta[j] = maxval - minval;
+	deltaerr[j] = sqrt(error1*error1 + error2*error2);
 }
 
-TCanvas *can2 = new TCanvas("can2","",1200,500);
+TCanvas *can2 = new TCanvas("canvasout","",1200,500);
 can2->Divide(2,1);
 can2->cd(1);
 int n = N_channels;
 double x[n];
 for (int i = 0; i < n; ++i) x[i] = (double)i;
-TGraph *gr = new TGraph(n,x,delta);
+TGraphErrors *gr = new TGraphErrors(n,x,delta,0,deltaerr);
 gr->SetTitle("Resonance finder function");
 gr->GetXaxis()->SetTitle("ADC channel");
 gr->GetYaxis()->SetTitle("max - min");
-gr->Draw("ACP");
+gr->SetFillColor(4);
+gr->Draw("a3L");
 
 can2->cd(2);
 TGraph *grS[N_scans];
@@ -123,10 +137,10 @@ grS[i] = new TGraph(n,x,sm);
 
 grS[0]->SetTitle("scan functions");
 grS[0]->GetXaxis()->SetTitle("ADC channel");
-grS[0]->Draw("ACP");
-for (int i = 1; i < N_scans; ++i) grS[i]->Draw("CP");
+grS[0]->Draw("AL");
+for (int i = 1; i < N_scans; ++i) grS[i]->Draw("L");
 
-
+f_output->WriteTObject(can2);
 
 return;	
 }
@@ -134,14 +148,17 @@ return;
 
 int main(int argc, char **argv){
    //check for a correct usage
-   if(argc != 3){
+   //usage ./ResonanceFinder IsSimulation IsVerbose OutputFile ConfigurationFile
+   if(argc != 4){
    	std::cout<<"Usage of ResonanceFinder: ./ResonanceFinder IsSimulation IsVerbose"<<std::endl;
 	std::cout<<"IsSimulation = 0 --> Use with data files / else run a simulator"<<std::endl;
 	std::cout<<"IsVerbose = 0 --> No plots produced"<<std::endl;
    	return 1;
    }
 
-   TApplication theApp("App", &argc, argv);
+   //TApplication theApp("App", &argc, argv);
+
+   TFile *f_output = new TFile(argv[3],"CREATE");
 
    bool IsSimulation = true;
    bool IsVerbose = true;
@@ -149,11 +166,11 @@ int main(int argc, char **argv){
    if(strcmp(argv[1],"0")==0) IsSimulation = false;
    if(strcmp(argv[2],"0")==0) IsVerbose = false;
 
-   ResonanceFinder(IsSimulation, IsVerbose);
-   theApp.Run();
+   ResonanceFinder(IsSimulation, IsVerbose, f_output);
+   //theApp.Run();
 
-   gApplication->Terminate(0);
-   exit(1);
-
+   //gApplication->Terminate(0);
+   //exit(1);
+   f_output->Close();
    return 0;
 }

@@ -80,14 +80,15 @@ class ResonanceSimulator{
 		//get outputs
 		std::vector<std::vector<double> > GetSpectra();
 		std::vector<double> GetNRSCounts();
-		void PlotResults();
+		void PlotResults(TFile*);
 
-		void RunTheSimulator();	//run a scan
+		void RunTheSimulator(TFile*);	//run a scan
 
 	
 				//output vars
 		std::vector<TH1D*> hcounts; //compton spectrum      //!!!!!!!
 		std::vector<double> N_NRS;	//counts at resonance
+
 
 };
 
