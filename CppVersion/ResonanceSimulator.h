@@ -78,8 +78,8 @@ class ResonanceSimulator{
 
 
 		//get outputs
-		std::vector<std::vector<int> > GetSpectra();
-		std::vector<int> GetNRSCounts();
+		std::vector<std::vector<double> > GetSpectra();
+		std::vector<double> GetNRSCounts();
 		void PlotResults();
 
 		void RunTheSimulator();	//run a scan

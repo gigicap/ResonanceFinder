@@ -45,7 +45,7 @@ if(UseBkg){
 TFile *f = new TFile("background.root","READ");
 hbkg = (TH1D*)f->Get("hbackground");
 }
-else N_background = 120;
+else N_background = 120*run_time;
 
 }
 
@@ -177,15 +177,15 @@ void ResonanceSimulator::get_background(){
 return;
 }
 
-std::vector<std::vector<int> > ResonanceSimulator::GetSpectra(){
+std::vector<std::vector<double> > ResonanceSimulator::GetSpectra(){
 
-std::vector<std::vector<int> > final_vector;
+std::vector<std::vector<double> > final_vector;
 
 for (size_t i = 0; i < hcounts.size(); ++i){
-	std::vector<int> value_vec;
+	std::vector<double> value_vec;
 	for (int j = 0; j < hcounts[i]->GetSize()-2; ++j){
 			double c_value = hcounts[i]->GetBinContent(j+1);
-			value_vec.push_back(round(c_value));
+			value_vec.push_back(c_value);
 		}
 	final_vector.push_back(value_vec);
 	}
@@ -193,10 +193,10 @@ for (size_t i = 0; i < hcounts.size(); ++i){
 return final_vector;
 }
 
-std::vector<int> ResonanceSimulator::GetNRSCounts(){
-	std::vector<int> NN;
+std::vector<double> ResonanceSimulator::GetNRSCounts(){
+	std::vector<double> NN;
 	for (size_t i = 0; i < N_NRS.size(); ++i)
-		NN.push_back(round(N_NRS[i]));
+		NN.push_back(N_NRS[i]);
 	
 	return NN;
 }
