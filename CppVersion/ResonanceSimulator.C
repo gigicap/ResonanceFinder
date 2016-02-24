@@ -15,15 +15,18 @@ E_max = 2.4;
 ADC_channels = 1024;
 energy_per_channel = (E_max - E_min)/ADC_channels;
 
-//scanning related variables
-scan_step = 0.005; 	//average step of the scans
-scan_width = scan_step/10;	//scan energy fluctuations
-n_scans = 20;	//number of scans 
 
 //Beam variables
 width =  0.005; //percentile
 run_time = 1000.0;	//beam spread, run time (in s)
 N_total = 1.0e10;			//total number of gammas per bunch/second
+
+
+//scanning related variables
+scan_step = 2*0.005*(E_max + E_min)*0.1; 	//average step of the scans (10% of the whole energy spread)
+scan_width = scan_step/10;	//scan energy fluctuations
+n_scans = 10;	//number of scans 
+
 
 //Target and detector variables
 z_target = 0.15;
