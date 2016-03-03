@@ -29,6 +29,9 @@
 
 using namespace std;
 
+
+void find_minima(int, double*, std::vector<int>*);
+
 void ResonanceFinder(bool IsSimulation, bool IsVerbose, TFile *f_output){
 
 int N_channels = 0;
@@ -66,8 +69,8 @@ if (IsVerbose) std::cout<<"---->Ready"<<std::endl;
 
 N_scans = NRScounts.size();
 
-for (size_t i = 0; i < N_scans; ++i) {
-	std::cout<<"Scan "<<i<<" - NRS = \t"<<NRScounts[i]<<std::endl;
+if (IsVerbose){
+for (size_t i = 0; i < N_scans; ++i) std::cout<<"Scan "<<i<<" - NRS = \t"<<NRScounts[i]<<std::endl;
 }
 
 double scan_matrix[N_scans][N_channels];
@@ -109,9 +112,28 @@ for (int j = 0; j < N_channels; ++j){
 	deltaerr[j] = sqrt(error1*error1 + error2*error2);
 }
 
-TCanvas *can2 = new TCanvas("canvasout","",1200,500);
-can2->Divide(2,1);
-can2->cd(1);
+std::vector<int> min_indices;
+find_minima(N_channels, delta, &min_indices);
+
+
+int n_min = (int)min_indices.size();
+double x_min[n_min];
+double y_min[n_min];
+for (int i = 0; i < n_min; ++i){
+	std::cout<<min_indices[i]<<"\t";
+	x_min[i] = (double)min_indices[i];
+	y_min[i] = delta[min_indices[i]];
+}
+std::cout<<std::endl;
+
+
+if(IsVerbose){
+TGraphErrors *gmin = new TGraphErrors(n_min,x_min,y_min,0,0);
+gmin->SetMarkerStyle(23);
+gmin->SetMarkerSize(1);
+gmin->SetMarkerColor(2);
+
+
 int n = N_channels;
 double x[n];
 for (int i = 0; i < n; ++i) x[i] = (double)i;
@@ -119,8 +141,18 @@ TGraphErrors *gr = new TGraphErrors(n,x,delta,0,deltaerr);
 gr->SetTitle("Resonance finder function");
 gr->GetXaxis()->SetTitle("ADC channel");
 gr->GetYaxis()->SetTitle("max - min");
-gr->SetFillColor(4);
-gr->Draw("a3L");
+//gr->SetFillColor(5);
+gr->SetFillColorAlpha(5,0.6);
+
+TCanvas *can2 = new TCanvas("canvasout","",1200,500);
+can2->Divide(2,1);
+can2->cd(1);
+TMultiGraph *mg0 = new TMultiGraph();
+mg0->Add(gr,"3l");
+mg0->Add(gmin,"p");
+
+mg0->Draw("a");
+
 
 can2->cd(2);
 TGraph *grS[N_scans];
@@ -135,12 +167,19 @@ sm[j] = scan_matrix[i][j];
 grS[i] = new TGraph(n,x,sm);
 }
 
+TMultiGraph *mg = new TMultiGraph();
+
 grS[0]->SetTitle("scan functions");
 grS[0]->GetXaxis()->SetTitle("ADC channel");
-grS[0]->Draw("AL");
-for (int i = 1; i < N_scans; ++i) grS[i]->Draw("L");
+//grS[0]->Draw("AL");
+for (int i = 0; i < N_scans; ++i){
+	 mg->Add(grS[i],"l");
+	}
+mg->Draw("a");
 
 f_output->WriteTObject(can2);
+}
+
 
 return;	
 }
@@ -153,12 +192,9 @@ int main(int argc, char **argv){
    	std::cout<<"Usage of ResonanceFinder: ./ResonanceFinder IsSimulation IsVerbose"<<std::endl;
 	std::cout<<"IsSimulation = 0 --> Use with data files / else run a simulator"<<std::endl;
 	std::cout<<"IsVerbose = 0 --> No plots produced"<<std::endl;
+	std::cout<<"Output file (give a fakename if IsVerbose = 0"<<std::endl;
    	return 1;
    }
-
-   //TApplication theApp("App", &argc, argv);
-
-   TFile *f_output = new TFile(argv[3],"CREATE");
 
    bool IsSimulation = true;
    bool IsVerbose = true;
@@ -166,11 +202,26 @@ int main(int argc, char **argv){
    if(strcmp(argv[1],"0")==0) IsSimulation = false;
    if(strcmp(argv[2],"0")==0) IsVerbose = false;
 
+   //TApplication theApp("App", &argc, argv);
+   TFile *f_output;
+   if(IsVerbose) f_output = new TFile(argv[3],"CREATE");
+
    ResonanceFinder(IsSimulation, IsVerbose, f_output);
    //theApp.Run();
 
    //gApplication->Terminate(0);
    //exit(1);
-   f_output->Close();
+   if(IsVerbose) f_output->Close();
    return 0;
+}
+
+
+
+void find_minima(int N_channels, double *delta, std::vector<int> *min_indices){
+for (int i = 1; i < N_channels-1; ++i)
+{
+	if((delta[i] < delta[i-1]) && (delta[i] < delta[i+1]))
+		min_indices->push_back(i);
+}
+return;
 }

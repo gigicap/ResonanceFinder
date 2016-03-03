@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<root>
+<ADC 
+	E_MIN = "2.0"
+	E_MAX = "2.4"
+	ADC_CHANNELS = "1024"
+	>
+</ADC>
+<BEAM 
+	WIDTH = "0.005"
+	RUN_TIME = "1000"
+	N_TOTAL = "1.0e10"
+	SIGMA_BEAM = "100"
+	SCAN_STEP = "0.0005"
+	N_SCANS = "10"
+	>
+</BEAM>
+<TARGET 
+	Z_TARGET = "0.15"
+	RHO_TARGET = "6.1e20"
+	>
+</TARGET>
+<DETECTOR
+	DETECTOR_EFFICIENCY = "0.17"
+	DETECTOR_OMEGA = "0.5"
+	>
+</DETECTOR>
+<RESONANCES>
+	<RESONANCE
+		E_RESO = "2.21"
+		W_RESO = "6.2e-6"
+		I_RESO = "64"
+		>
+	</RESONANCE>
+	<RESONANCE
+		E_RESO = "2.18"
+		W_RESO = "8.2e-6"
+		I_RESO = "88"
+		>
+	</RESONANCE>
+</RESONANCES>
+<BACKGROUND
+	N_BACKGROUND = "80"
+	BACKGOUND_FILE = "background.root"
+	E_CUT = "1.8"
+	>
+</BACKGROUND>
+</root>

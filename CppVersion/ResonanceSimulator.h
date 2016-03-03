@@ -23,6 +23,7 @@
 #include "TF1.h"
 #include "TLegend.h"
 #include "TLine.h"
+#include "ReadConfig.h"
 
 using namespace std;
 
@@ -68,6 +69,7 @@ class ResonanceSimulator{
 		TH1D *hbkg;
 
 		ResonanceSimulator(bool,bool);
+		~ResonanceSimulator();
 
 		void make_a_beam(double);
 		TH1D*  Compton_spectrum(int);
@@ -88,6 +90,8 @@ class ResonanceSimulator{
 				//output vars
 		std::vector<TH1D*> hcounts; //compton spectrum      //!!!!!!!
 		std::vector<double> N_NRS;	//counts at resonance
+
+		GetConfig *ConfigurationFile;
 
 
 };

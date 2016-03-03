@@ -7,9 +7,58 @@ using namespace std;
 
 
 ResonanceSimulator::ResonanceSimulator(bool verbo, bool use_bkg_file){
+
 //get all the parameters from a cfg file and the background sample from ROOT file
 DoVerbose = verbo; //if true, make all the plots...
 UseBkg = use_bkg_file;
+
+//open configuration file 
+ConfigurationFile = new GetConfig();
+std::string confile = "configure.xml";
+ConfigurationFile->readConfigFile(confile);
+   
+if(verbo) std::cout<<"xml layer file read!"<<std::endl;
+
+
+//assign all parameters
+E_min = ConfigurationFile->rc_E_min;
+E_max = ConfigurationFile->rc_E_max;
+ADC_channels = ConfigurationFile->rc_ADC_channels;
+energy_per_channel = (E_max - E_min)/ADC_channels;
+
+//Beam variables
+width =  ConfigurationFile->rc_width; 		//percentile
+run_time = ConfigurationFile->rc_run_time;	//beam spread, run time (in s)
+N_total = ConfigurationFile->rc_N_total;	//total number of gammas per bunch/second
+
+scan_step = ConfigurationFile->rc_scan_step; 	//average step of the scans (10% of the whole energy spread)
+scan_width = scan_step/10;	//scan energy fluctuations
+n_scans = ConfigurationFile->rc_N_scans;	//number of scans 
+
+//Target and detector variables
+z_target = ConfigurationFile->rc_z_target;
+rho_target = ConfigurationFile->rc_rho_target;
+Sigma_beam = ConfigurationFile->rc_sigma_beam;
+
+detector_efficiency = ConfigurationFile->rc_detector_efficiency; 
+detector_Omega = ConfigurationFile->rc_detector_omega;
+
+E_reso = ConfigurationFile->rc_E_reso;
+W_reso = ConfigurationFile->rc_W_reso;
+I_reso = ConfigurationFile->rc_I_reso;
+
+
+e_cut = ConfigurationFile->rc_E_cut;
+N_background = run_time*ConfigurationFile->rc_N_background;
+
+char *background_file = ConfigurationFile->rc_background_file;
+
+if(UseBkg){
+TFile *f = new TFile("background.root","READ");
+hbkg = (TH1D*)f->Get("hbackground");
+}
+
+/*
 E_min = 2.0;
 E_max = 2.4;
 ADC_channels = 1024;
@@ -17,8 +66,8 @@ energy_per_channel = (E_max - E_min)/ADC_channels;
 
 
 //Beam variables
-width =  0.005; //percentile
-run_time = 1000.0;	//beam spread, run time (in s)
+width =  wd; //percentile
+run_time = rt;	//beam spread, run time (in s)
 N_total = 1.0e10;			//total number of gammas per bunch/second
 
 
@@ -40,11 +89,7 @@ detector_Omega = 0.5;
 E_reso.push_back(2.2);
 W_reso.push_back(6.2e-6);
 I_reso.push_back(64); //in b 
-/*
-E_reso.push_back(2.24);
-W_reso.push_back(8.2e-6);
-I_reso.push_back(120); //in b 
-*/
+
 
 //cuts
 e_cut = 1.8;
@@ -53,9 +98,17 @@ if(UseBkg){
 TFile *f = new TFile("background.root","READ");
 hbkg = (TH1D*)f->Get("hbackground");
 }
-else N_background = 110*run_time; //reasonable from CDR
+else N_background = nb*run_time; //reasonable from CDR
+*/
+
 
 }
+
+ResonanceSimulator::~ResonanceSimulator(){
+	delete ConfigurationFile;
+}
+
+
 
 void ResonanceSimulator::RunTheSimulator(TFile *f_output){
 
@@ -135,7 +188,6 @@ return temp_hcounts;
 }
 
 void ResonanceSimulator::resonanceIntegrals(){
-	std::cout<<"eresosize = "<<E_reso.size()<<std::endl;
 for (size_t i = 0; i < E_reso.size(); ++i)
 	{
 	TF1 *Resonance = new TF1("Resonance","[0]*TMath::Gaus(x,[1],[2])",E_reso[i]-5*W_reso[i],E_reso[i]+5*W_reso[i]);
@@ -150,7 +202,6 @@ double ResonanceSimulator::resonanceCounter(){
 
 
 double N1 = 0;
-	std::cout<<"intesize = "<<Inte.size()<<std::endl;
 for (size_t i = 0; i < Inte.size(); ++i){
 	double energy = E_reso[i];
 	N1 = N1 + Inte[i]*Beam->Eval(energy); 
