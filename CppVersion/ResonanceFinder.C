@@ -32,7 +32,7 @@ using namespace std;
 
 void find_minima(int, double*, std::vector<int>*);
 
-void ResonanceFinder(bool IsSimulation, bool IsVerbose, TFile *f_output){
+void ResonanceFinder(bool IsSimulation, bool IsCompton, bool IsVerbose, TFile *f_output){
 
 int N_channels = 0;
 int N_scans = 0;
@@ -51,9 +51,11 @@ if(!IsSimulation){
 
 else{
 	bool use_bkg_file = false;
+	bool use_compton_file = IsCompton;
+
 
 	if (IsVerbose) std::cout<<"---Initialising simulator"<<std::endl;
-	ResonanceSimulator *theSimulator = new ResonanceSimulator(IsVerbose, use_bkg_file);
+	ResonanceSimulator *theSimulator = new ResonanceSimulator(IsVerbose, use_bkg_file, use_compton_file);
 	if (IsVerbose) std::cout<<"---Running the simulator"<<std::endl;
 	theSimulator->RunTheSimulator(f_output);
 

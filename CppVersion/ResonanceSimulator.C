@@ -6,11 +6,12 @@ using namespace std;
 
 
 
-ResonanceSimulator::ResonanceSimulator(bool verbo, bool use_bkg_file){
+ResonanceSimulator::ResonanceSimulator(bool verbo, bool use_bkg_file, bool use_compton_file){
 
 //get all the parameters from a cfg file and the background sample from ROOT file
 DoVerbose = verbo; //if true, make all the plots...
 UseBkg = use_bkg_file;
+UseCompton = use_compton_file;
 
 //open configuration file 
 ConfigurationFile = new GetConfig();
@@ -54,8 +55,14 @@ N_background = run_time*ConfigurationFile->rc_N_background;
 char *background_file = ConfigurationFile->rc_background_file;
 
 if(UseBkg){
-TFile *f = new TFile("background.root","READ");
-hbkg = (TH1D*)f->Get("hbackground");
+TFile *fb = new TFile("background.root","READ");
+hbkg = (TH1D*)fb->Get("hbackground");
+}
+
+if(UseCompton){
+TFile *fc = new TFile("compton.root","READ");
+hh = (TH1D*)fc->Get("SignalMacroEBeam");
+generate_compton_template();	
 }
 
 /*
@@ -146,10 +153,13 @@ for (int j = 0; j < n_scans; ++j)
 	}
 	energy_tracker.push_back(en);
 
-	Beam = new TF1("Beam","[0]*TMath::Gaus(x,[1],[2])",E_min,E_max);
-//randomize scan and use this kernel code:
-	make_a_beam(en);
-	hcounts.push_back(Compton_spectrum(j));
+	if(!UseCompton){
+		Beam = new TF1("Beam","[0]*TMath::Gaus(x,[1],[2])",E_min,E_max);
+		//randomize scan and use this kernel code:
+		make_a_beam(en);
+	}
+    
+	hcounts.push_back(Compton_spectrum(j,en));
 	N_NRS.push_back(resonanceCounter());
 	delete Beam;
 }
@@ -162,6 +172,8 @@ return;
 //define a beam function
 void ResonanceSimulator::make_a_beam(double E_central){
 
+
+//if a gaussian beamer is set 
 double central_energy_value = (E_min+E_max)/2;
 double W_beam = central_energy_value*width;
 double I_max = N_total/(W_beam/energy_per_channel*sqrt(2*PI));   //define the max beam intensity from brillance
@@ -169,10 +181,11 @@ double time_I = I_max*run_time;
 	
 Beam->SetParameters(time_I, E_central, W_beam);	
 
+//if a input from compton is taken Compton_spectrum is directly evaluated 
 }
 
 //extract a count spectrum from the beam function (as a TH1D)
-TH1D* ResonanceSimulator::Compton_spectrum(int j){
+TH1D* ResonanceSimulator::Compton_spectrum(int j, double en){
 
 TString thname = "hcounts";
 thname.Append(Form("%d",j));
@@ -180,10 +193,20 @@ thname.Append(Form("%d",j));
 TH1D *temp_hcounts = new TH1D(thname,"Beam from Compton",ADC_channels,0,ADC_channels);
 
 double energy = E_min;
+
+//if a gaussian beamer is set 
+if(!UseCompton){
 for(int i = 0; i<ADC_channels; i++){
 	energy = energy + energy_per_channel;
 	temp_hcounts->Fill(i,Beam->Eval(energy));
 	}
+}
+//if a input from compton is taken
+else{
+generate_compton_at_E(en,temp_hcounts);
+}
+
+
 return temp_hcounts;	
 }
 
@@ -351,3 +374,96 @@ f_output->WriteTObject(c4);
 if (DoVerbose) std::cout<<"---exit"<<std::endl;
 return;
 }
+
+
+void ResonanceSimulator::generate_compton_template(){
+
+int nentries = hh->Integral();
+int size = hh->GetSize()-2;
+
+if(DoVerbose){
+	std::cout<<"ADC_channels was previously set to: "<<ADC_channels<<". Using recorded Compton spectra --> force ADC_channels to: "<<size<<std::endl;
+	std::cout<<"E_min was previously set to: "<<E_min<<". Using recorded Compton spectra --> force E_min to: "<<hh->GetXaxis()->GetBinCenter(1)<<std::endl;
+	std::cout<<"E_max was previously set to: "<<E_max<<". Using recorded Compton spectra --> force E_max to: "<<hh->GetXaxis()->GetBinCenter(size-1)<<std::endl;
+}
+ADC_channels = size;
+E_min = hh->GetXaxis()->GetBinCenter(1);
+E_max = hh->GetXaxis()->GetBinCenter(size-1);
+
+
+//get some starting values for the fit 
+double hmin = hh->GetXaxis()->GetXmin();
+double hmax = hh->GetXaxis()->GetXmax();
+int binmax = hh->GetMaximumBin();
+double maxval = hh->GetXaxis()->GetBinCenter(binmax);
+
+double maximum = hh->GetMaximum();
+double halfmax = maximum/2;
+
+int i = binmax;
+while(hh->GetBinContent(i)>=halfmax)
+	i++;
+int bin0 = i-1;
+int bin1 = i;
+
+double x_0 = hh->GetXaxis()->GetBinCenter(bin0);
+double x_1 = hh->GetXaxis()->GetBinCenter(bin1);
+double y_0 = hh->GetBinContent(bin0);
+double y_1 = hh->GetBinContent(bin1);
+double y_h = halfmax;
+double x_h = x_0 + (y_h - y_0)*((x_1-x_0)/(y_1-y_0));
+
+
+double start_sigma = 2*(x_h-maxval)/2.35;
+
+cout<<"Start mean = "<<maxval<<" start sigma = "<<start_sigma<<endl;
+
+RooRealVar x("x","x",hmin,hmax);
+x.setBins(size);
+cbmean("cbmean","cbmean",maxval,maxval-start_sigma,maxval+start_sigma);
+cbsigma("cbsigma","cbsigma",start_sigma, 0,2*start_sigma);
+alpha("alpha","alpha",0.5,-1.5,1.5);
+n("n","n",40,0,100);
+
+//get the sample histogram (hh) as data for CB PDF
+RooDataHist dh("dh","dh",x,Import(*hh));
+
+cout<<"Define a CB PDF"<<endl;
+//define a pdf from a data fit
+cball = new RooCBShape("cball", "crystal ball", x, cbmean, cbsigma, alpha, n);
+cball->fitTo(dh);
+
+return;	
+}
+
+void ResonanceSimulator::generate_compton_at_E(double en, TH1D *temp_hcounts){
+//define a new randomized dataset
+
+Double_t cbmean_shifted_val = en;
+RooRealVar cbmean_shifted("cbmean","cbmean",cbmean_shifted_val,cbmean_shifted_val-start_sigma,cbmean_shifted_val+start_sigma);
+
+
+RooCBShape cball2("cball2", "crystal ball shifted", x, cbmean_shifted, cbsigma, alpha, n);
+
+
+RooDataHist *data2 = cball2.generateBinned(x,nentries);
+
+temp_hcounts = (TH1D*)data2->createHistogram();
+
+//TH1* h2 = data2->createHistogram("dg2",x,Binning(size)); 
+//RooDataHist dh2("dh2","dh2",x,Import(*h2));
+
+//plot
+if(DoVerbose){
+RooPlot* xframe2 = x.frame() ;
+dh.plotOn(xframe2) ;
+cball.plotOn(xframe2) ;
+data2->plotOn(xframe2,MarkerColor(2));
+xframe2->Draw() ;
+}
+
+
+return;	
+}
+
+

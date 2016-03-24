@@ -24,13 +24,21 @@
 #include "TLegend.h"
 #include "TLine.h"
 #include "ReadConfig.h"
+#include "RooRealVar.h"
+#include "RooDataSet.h"
+#include "RooCBShape.h"
+#include "RooDataHist.h"
 
 using namespace std;
+using namespace RooFit; 
+
 
 class ResonanceSimulator{
 
 	bool DoVerbose;
 	bool UseBkg;
+	bool UseCompton;
+
 	std::vector<double> energy_tracker; //keep track of the energy steps
 
 	public:
@@ -67,17 +75,27 @@ class ResonanceSimulator{
 
 		TF1 *Beam;
 		TH1D *hbkg;
+		TH1D *hh;
 
 		ResonanceSimulator(bool,bool);
 		~ResonanceSimulator();
 
-		void make_a_beam(double);
-		TH1D*  Compton_spectrum(int);
+		void make_a_beam(double);					// generate a gaussian beam profile
+		TH1D*  Compton_spectrum(int,double);		//	generate a gaussian compton spectrum at enetgy E
 		void resonanceIntegrals(void);
 		double resonanceCounter(void);
 		double random_background(double);
 		void get_background();
 
+		void generate_compton_template();			//read a comptoon spectrum and store into a CB template
+		void generate_compton_at_E(double ,TH1D*);	//tranlate the CB and generate a new compton spectrum at enetgy E 
+		RooCBShape *cball;							//crystalball for compton template
+		//Roofit stuff
+		RooRealVar x;
+		RooRealVar cbmean;
+		RooRealVar cbsigma;
+		RooRealVar alpha;
+		RooRealVar n;
 
 		//get outputs
 		std::vector<std::vector<double> > GetSpectra();
@@ -87,11 +105,12 @@ class ResonanceSimulator{
 		void RunTheSimulator(TFile*);	//run a scan
 
 	
-				//output vars
+		//output vars
 		std::vector<TH1D*> hcounts; //compton spectrum      //!!!!!!!
 		std::vector<double> N_NRS;	//counts at resonance
 
 		GetConfig *ConfigurationFile;
+
 
 
 };
