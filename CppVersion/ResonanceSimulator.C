@@ -33,8 +33,8 @@ run_time = ConfigurationFile->rc_run_time;	//beam spread, run time (in s)
 N_total = ConfigurationFile->rc_N_total;	//total number of gammas per bunch/second
 
 scan_step = ConfigurationFile->rc_scan_step; 	//average step of the scans (10% of the whole energy spread)
-scan_width = scan_step/10;	//scan energy fluctuations
-n_scans = ConfigurationFile->rc_N_scans;	//number of scans 
+scan_width = scan_step/10;						//scan energy fluctuations
+n_scans = ConfigurationFile->rc_N_scans;		//number of scans 
 
 //Target and detector variables
 z_target = ConfigurationFile->rc_z_target;
@@ -53,16 +53,17 @@ e_cut = ConfigurationFile->rc_E_cut;
 N_background = run_time*ConfigurationFile->rc_N_background;
 
 char *background_file = ConfigurationFile->rc_background_file;
+char *compton_file = ConfigurationFile->rc_compton_file;
 
 if(UseBkg){
-TFile *fb = new TFile("background.root","READ");
+TFile *fb = new TFile(background_file,"READ");
 hbkg = (TH1D*)fb->Get("hbackground");
 }
 
 if(UseCompton){
-TFile *fc = new TFile("compton.root","READ");
+TFile *fc = new TFile(compton_file,"READ");
 hh = (TH1D*)fc->Get("SignalMacroEBeam");
-generate_compton_template();	
+template_sigma  = generate_compton_template();	
 }
 
 /*
@@ -119,7 +120,14 @@ ResonanceSimulator::~ResonanceSimulator(){
 
 void ResonanceSimulator::RunTheSimulator(TFile *f_output){
 
-double E_central = (E_max + E_min)/2;
+double E_central;
+
+if(UseCompton){		//if a compton template is provided, the centroid of the distribution is taken 
+	int binmax = hh->GetMaximumBin();
+	E_central = hh->GetXaxis()->GetBinCenter(binmax);
+}
+else
+	E_central = (E_max + E_min)/2;  //generate gaus beams from the middle point 
 
 //define the energy scan range and check if it is inside the E_min,E_max range
 double minimum_scan = E_central - scan_step*(int)n_scans/2;
@@ -203,7 +211,7 @@ for(int i = 0; i<ADC_channels; i++){
 }
 //if a input from compton is taken
 else{
-generate_compton_at_E(en,temp_hcounts);
+generate_compton_at_E(en,temp_hcounts, template_sigma);
 }
 
 
@@ -376,9 +384,8 @@ return;
 }
 
 
-void ResonanceSimulator::generate_compton_template(){
+double ResonanceSimulator::generate_compton_template(){
 
-int nentries = hh->Integral();
 int size = hh->GetSize()-2;
 
 if(DoVerbose){
@@ -418,48 +425,53 @@ double start_sigma = 2*(x_h-maxval)/2.35;
 
 cout<<"Start mean = "<<maxval<<" start sigma = "<<start_sigma<<endl;
 
-RooRealVar x("x","x",hmin,hmax);
-x.setBins(size);
-cbmean("cbmean","cbmean",maxval,maxval-start_sigma,maxval+start_sigma);
-cbsigma("cbsigma","cbsigma",start_sigma, 0,2*start_sigma);
-alpha("alpha","alpha",0.5,-1.5,1.5);
-n("n","n",40,0,100);
+x = new RooRealVar("x","x",hmin,hmax);
+x->setBins(size);
+cbmean = new RooRealVar("cbmean","cbmean",maxval,maxval-start_sigma,maxval+start_sigma);
+cbsigma = new RooRealVar("cbsigma","cbsigma",start_sigma, 0,2*start_sigma);
+alpha = new RooRealVar("alpha","alpha",0.5,-1.5,1.5);
+n = new RooRealVar("n","n",40,0,100);
 
 //get the sample histogram (hh) as data for CB PDF
-RooDataHist dh("dh","dh",x,Import(*hh));
+dh = new RooDataHist("dh","dh",*x,Import(*hh));
 
 cout<<"Define a CB PDF"<<endl;
 //define a pdf from a data fit
-cball = new RooCBShape("cball", "crystal ball", x, cbmean, cbsigma, alpha, n);
-cball->fitTo(dh);
+cball = new RooCBShape("cball", "crystal ball", *x, *cbmean, *cbsigma, *alpha, *n);
+cball->fitTo(*dh);
 
-return;	
+return start_sigma;	
 }
 
-void ResonanceSimulator::generate_compton_at_E(double en, TH1D *temp_hcounts){
+void ResonanceSimulator::generate_compton_at_E(double en, TH1D *temp_hcounts, double start_sigma){
 //define a new randomized dataset
 
 Double_t cbmean_shifted_val = en;
-RooRealVar cbmean_shifted("cbmean","cbmean",cbmean_shifted_val,cbmean_shifted_val-start_sigma,cbmean_shifted_val+start_sigma);
+
+RooRealVar *cbmean_shifted = new RooRealVar("cbmean","cbmean",cbmean_shifted_val,cbmean_shifted_val-start_sigma,cbmean_shifted_val+start_sigma);
 
 
-RooCBShape cball2("cball2", "crystal ball shifted", x, cbmean_shifted, cbsigma, alpha, n);
+RooCBShape cball2("cball2", "crystal ball shifted", *x, *cbmean_shifted, *cbsigma, *alpha, *n);
+
+int nentries = hh->Integral();
+RooDataHist *data2 = cball2.generateBinned(*x,nentries);
+
+TH1 *t_h = data2->createHistogram("t_h",ADC_channels);
+temp_hcounts = (TH1D*)t_h; 
 
 
-RooDataHist *data2 = cball2.generateBinned(x,nentries);
 
-temp_hcounts = (TH1D*)data2->createHistogram();
 
 //TH1* h2 = data2->createHistogram("dg2",x,Binning(size)); 
 //RooDataHist dh2("dh2","dh2",x,Import(*h2));
 
 //plot
 if(DoVerbose){
-RooPlot* xframe2 = x.frame() ;
-dh.plotOn(xframe2) ;
-cball.plotOn(xframe2) ;
+RooPlot *xframe2 = x->frame() ;
+dh->plotOn(xframe2);
+cball->plotOn(xframe2);
 data2->plotOn(xframe2,MarkerColor(2));
-xframe2->Draw() ;
+xframe2->Draw();
 }
 
 

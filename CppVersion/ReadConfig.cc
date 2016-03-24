@@ -38,6 +38,7 @@ GetConfig::GetConfig()
     TAG_DETECTOR = XMLString::transcode("DETECTOR");
     TAG_RESONANCES  = XMLString::transcode("RESONANCES");
     TAG_RESONANCE  = XMLString::transcode("RESONANCE");
+    TAG_BACKGROUND  = XMLString::transcode("BACKGROUND");
 
     TAG_E_MIN  = XMLString::transcode("E_MIN");
     TAG_E_MAX  = XMLString::transcode("E_MAX");   
@@ -49,6 +50,8 @@ GetConfig::GetConfig()
     TAG_SIGMA_BEAM  = XMLString::transcode("SIGMA_BEAM");
     TAG_SCAN_STEP  = XMLString::transcode("SCAN_STEP");
     TAG_N_SCANS  = XMLString::transcode("N_SCANS");
+    TAG_COMPTON_FILE  = XMLString::transcode("COMPTON_FILE"); 
+
 
     TAG_Z_TARGET  = XMLString::transcode("Z_TARGET"); 
     TAG_RHO_TARGET  = XMLString::transcode("RHO_TARGET"); 
@@ -95,6 +98,8 @@ GetConfig::~GetConfig()
    XMLString::release( &TAG_SIGMA_BEAM);
    XMLString::release( &TAG_SCAN_STEP);
    XMLString::release( &TAG_N_SCANS);
+   XMLString::release( &TAG_COMPTON_FILE); 
+
 
    XMLString::release( &TAG_Z_TARGET); 
    XMLString::release( &TAG_RHO_TARGET); 
@@ -206,6 +211,8 @@ void GetConfig::readConfigFile(string& configFile)  throw( std::runtime_error )
          			}
       }
 
+      std::cout<<"--> Getting node ADC "<<std::endl;
+
 
       DOMNode* node_adc = elementRoot->getElementsByTagName(TAG_ADC)->item(0);
       if( node_adc->getNodeType() &&  node_adc->getNodeType() == DOMNode::ELEMENT_NODE ) 
@@ -225,6 +232,8 @@ void GetConfig::readConfigFile(string& configFile)  throw( std::runtime_error )
                  m_ADC_CHANNELS = XMLString::transcode(xmlch_ADC_CHANNELS);
                  rc_ADC_channels = atof(m_ADC_CHANNELS);
               }
+
+      std::cout<<"--> Getting node BEAM "<<std::endl;
 
       DOMNode* node_beam = elementRoot->getElementsByTagName(TAG_BEAM)->item(0);
       if( node_beam->getNodeType() &&  node_beam->getNodeType() == DOMNode::ELEMENT_NODE ) 
@@ -255,7 +264,15 @@ void GetConfig::readConfigFile(string& configFile)  throw( std::runtime_error )
                 const XMLCh* xmlch_N_SCANS = currentElement->getAttribute(TAG_N_SCANS);
                  m_N_SCANS = XMLString::transcode(xmlch_N_SCANS);
                  rc_N_scans = atof(m_N_SCANS);
+
+                const XMLCh* xmlch_COMPTON_FILE = currentElement->getAttribute(TAG_COMPTON_FILE);
+                 m_COMPTON_FILE = XMLString::transcode(xmlch_COMPTON_FILE);
+                 rc_compton_file = m_COMPTON_FILE;
               }
+
+
+      std::cout<<"--> Getting node TARGET "<<std::endl;
+
 
       DOMNode* node_target = elementRoot->getElementsByTagName(TAG_TARGET)->item(0);
       if( node_target->getNodeType() &&  node_target->getNodeType() == DOMNode::ELEMENT_NODE ) 
@@ -272,6 +289,10 @@ void GetConfig::readConfigFile(string& configFile)  throw( std::runtime_error )
                  rc_rho_target = atof(m_RHO_TARGET);
                }
 
+
+      std::cout<<"--> Getting node DETECTOR "<<std::endl;
+
+
       DOMNode* node_detector = elementRoot->getElementsByTagName(TAG_DETECTOR)->item(0);
       if( node_detector->getNodeType() &&  node_detector->getNodeType() == DOMNode::ELEMENT_NODE ) 
               {
@@ -287,15 +308,18 @@ void GetConfig::readConfigFile(string& configFile)  throw( std::runtime_error )
                  rc_detector_omega = atof(m_DETECTOR_OMEGA);
                }
 
+
+      std::cout<<"--> Getting node BKG"<<std::endl;
+
       DOMNode* node_background = elementRoot->getElementsByTagName(TAG_BACKGROUND)->item(0);
       if( node_background->getNodeType() &&  node_background->getNodeType() == DOMNode::ELEMENT_NODE ) 
               {
                 // Re-cast node as element
                 DOMElement* currentElement = dynamic_cast< xercesc::DOMElement* >( node_background );
-
                 const XMLCh* xmlch_N_BACKGROUND = currentElement->getAttribute(TAG_N_BACKGROUND);
                  m_N_BACKGROUND = XMLString::transcode(xmlch_N_BACKGROUND);
                  rc_N_background = atof(m_N_BACKGROUND);
+
 
                 const XMLCh* xmlch_E_CUT = currentElement->getAttribute(TAG_E_CUT);
                  m_E_CUT = XMLString::transcode(xmlch_E_CUT);
@@ -304,8 +328,11 @@ void GetConfig::readConfigFile(string& configFile)  throw( std::runtime_error )
                 const XMLCh* xmlch_BACKGROUND_FILE = currentElement->getAttribute(TAG_BACKGROUND_FILE);
                  m_BACKGROUND_FILE = XMLString::transcode(xmlch_BACKGROUND_FILE);
                  rc_background_file = m_BACKGROUND_FILE;
+
                }
       
+      std::cout<<"--> Done! "<<std::endl;
+
       
    }         
    catch( xercesc::XMLException& e )
@@ -316,4 +343,5 @@ void GetConfig::readConfigFile(string& configFile)  throw( std::runtime_error )
       XMLString::release( &message );
    }
    
+return;
 }

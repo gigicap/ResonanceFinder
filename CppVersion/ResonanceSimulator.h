@@ -28,6 +28,7 @@
 #include "RooDataSet.h"
 #include "RooCBShape.h"
 #include "RooDataHist.h"
+#include "RooPlot.h"
 
 using namespace std;
 using namespace RooFit; 
@@ -77,7 +78,7 @@ class ResonanceSimulator{
 		TH1D *hbkg;
 		TH1D *hh;
 
-		ResonanceSimulator(bool,bool);
+		ResonanceSimulator(bool,bool,bool);
 		~ResonanceSimulator();
 
 		void make_a_beam(double);					// generate a gaussian beam profile
@@ -87,15 +88,17 @@ class ResonanceSimulator{
 		double random_background(double);
 		void get_background();
 
-		void generate_compton_template();			//read a comptoon spectrum and store into a CB template
-		void generate_compton_at_E(double ,TH1D*);	//tranlate the CB and generate a new compton spectrum at enetgy E 
+		double generate_compton_template();			//read a comptoon spectrum and store into a CB template
+		void generate_compton_at_E(double ,TH1D*, double);	//tranlate the CB and generate a new compton spectrum at enetgy E 
 		RooCBShape *cball;							//crystalball for compton template
 		//Roofit stuff
-		RooRealVar x;
-		RooRealVar cbmean;
-		RooRealVar cbsigma;
-		RooRealVar alpha;
-		RooRealVar n;
+		RooRealVar *x;
+		RooRealVar *cbmean;
+		RooRealVar *cbsigma;
+		RooRealVar *alpha;
+		RooRealVar *n;
+		RooDataHist *dh;
+		double template_sigma;
 
 		//get outputs
 		std::vector<std::vector<double> > GetSpectra();

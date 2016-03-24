@@ -13,6 +13,7 @@
 	SIGMA_BEAM = "100"
 	SCAN_STEP = "0.0005"
 	N_SCANS = "10"
+	COMPTON_FILE = "compton.root"
 	>
 </BEAM>
 <TARGET 
@@ -41,8 +42,8 @@
 </RESONANCES>
 <BACKGROUND
 	N_BACKGROUND = "80"
-	BACKGOUND_FILE = "background.root"
 	E_CUT = "1.8"
+	BACKGOUND_FILE = "background.root"
 	>
 </BACKGROUND>
 </root>

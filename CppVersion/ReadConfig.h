@@ -50,6 +50,7 @@ public:
 
    double rc_width, rc_run_time; //beam spread, run time (in s)
    double rc_N_total;         //total number of gammas per bunch/second
+   char *rc_compton_file;
 
    //Target and detector variables
    double rc_z_target, rc_rho_target, rc_sigma_beam;
@@ -79,6 +80,7 @@ private:
    char* m_SIGMA_BEAM;
    char* m_SCAN_STEP;
    char* m_N_SCANS;
+   char* m_COMPTON_FILE;
 
    char* m_Z_TARGET; 
    char* m_RHO_TARGET; 
@@ -114,6 +116,7 @@ private:
    XMLCh* TAG_SIGMA_BEAM;
    XMLCh* TAG_SCAN_STEP;
    XMLCh* TAG_N_SCANS;
+   XMLCh* TAG_COMPTON_FILE; 
 
    XMLCh* TAG_Z_TARGET; 
    XMLCh* TAG_RHO_TARGET; 

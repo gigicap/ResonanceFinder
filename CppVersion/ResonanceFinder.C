@@ -45,7 +45,7 @@ std::vector<std::vector<double> > ComptonSpectra;
 std::vector<double> NRScounts;
 
 if(!IsSimulation){
-	std::cout<<"WORK in progress. Up to now only simulations available. Sorry!"<<std::cout;
+	std::cout<<"WORK in progress. Up to now only simulations available. Sorry!"<<std::endl;
 	return;
 }
 
@@ -190,25 +190,28 @@ return;
 int main(int argc, char **argv){
    //check for a correct usage
    //usage ./ResonanceFinder IsSimulation IsVerbose OutputFile ConfigurationFile
-   if(argc != 4){
-   	std::cout<<"Usage of ResonanceFinder: ./ResonanceFinder IsSimulation IsVerbose"<<std::endl;
+   if(argc != 5){
+   	std::cout<<"Usage of ResonanceFinder: ./ResonanceFinder IsSimulation IsVerbose IsCompton output_file"<<std::endl;
 	std::cout<<"IsSimulation = 0 --> Use with data files / else run a simulator"<<std::endl;
 	std::cout<<"IsVerbose = 0 --> No plots produced"<<std::endl;
+	std::cout<<"IsCompton = 0 --> No imput distribution from Compton spectrometer is given (fast gaussian beams are simulated)"<<std::endl;
 	std::cout<<"Output file (give a fakename if IsVerbose = 0"<<std::endl;
    	return 1;
    }
 
    bool IsSimulation = true;
    bool IsVerbose = true;
+   bool IsCompton = true;
 
    if(strcmp(argv[1],"0")==0) IsSimulation = false;
    if(strcmp(argv[2],"0")==0) IsVerbose = false;
+   if(strcmp(argv[3],"0")==0) IsCompton = false;
 
    //TApplication theApp("App", &argc, argv);
    TFile *f_output;
-   if(IsVerbose) f_output = new TFile(argv[3],"CREATE");
+   if(IsVerbose) f_output = new TFile(argv[4],"CREATE");
 
-   ResonanceFinder(IsSimulation, IsVerbose, f_output);
+   ResonanceFinder(IsSimulation, IsCompton, IsVerbose, f_output);
    //theApp.Run();
 
    //gApplication->Terminate(0);
