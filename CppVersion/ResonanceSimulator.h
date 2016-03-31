@@ -84,12 +84,12 @@ class ResonanceSimulator{
 		void make_a_beam(double);					// generate a gaussian beam profile
 		TH1D*  Compton_spectrum(int,double);		//	generate a gaussian compton spectrum at enetgy E
 		void resonanceIntegrals(void);
-		double resonanceCounter(void);
+		double resonanceCounter(int);
 		double random_background(double);
 		void get_background();
 
 		double generate_compton_template();			//read a comptoon spectrum and store into a CB template
-		void generate_compton_at_E(double ,TH1D*, double);	//tranlate the CB and generate a new compton spectrum at enetgy E 
+		TH1* generate_compton_at_E(double, double);	//tranlate the CB and generate a new compton spectrum at enetgy E 
 		RooCBShape *cball;							//crystalball for compton template
 		//Roofit stuff
 		RooRealVar *x;

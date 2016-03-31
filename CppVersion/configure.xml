@@ -8,12 +8,12 @@
 </ADC>
 <BEAM 
 	WIDTH = "0.005"
-	RUN_TIME = "1000"
+	RUN_TIME = "100"
 	N_TOTAL = "1.0e10"
 	SIGMA_BEAM = "100"
-	SCAN_STEP = "0.0005"
+	SCAN_STEP = "0.001"
 	N_SCANS = "10"
-	COMPTON_FILE = "compton.root"
+	COMPTON_FILE = "Scan3MeV.root"
 	>
 </BEAM>
 <TARGET 
@@ -28,20 +28,14 @@
 </DETECTOR>
 <RESONANCES>
 	<RESONANCE
-		E_RESO = "2.21"
+		E_RESO = "3"
 		W_RESO = "6.2e-6"
 		I_RESO = "64"
 		>
 	</RESONANCE>
-	<RESONANCE
-		E_RESO = "2.18"
-		W_RESO = "8.2e-6"
-		I_RESO = "88"
-		>
-	</RESONANCE>
 </RESONANCES>
 <BACKGROUND
-	N_BACKGROUND = "80"
+	N_BACKGROUND = "0"
 	E_CUT = "1.8"
 	BACKGOUND_FILE = "background.root"
 	>

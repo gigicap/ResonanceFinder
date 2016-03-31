@@ -37,7 +37,7 @@ void ResonanceFinder(bool IsSimulation, bool IsCompton, bool IsVerbose, TFile *f
 int N_channels = 0;
 int N_scans = 0;
 
-double NRS_CUT = 10000.0;
+double NRS_CUT = 1000.0;
 
 if (IsVerbose) std::cout<<"---Start resonance finder"<<std::endl;
 

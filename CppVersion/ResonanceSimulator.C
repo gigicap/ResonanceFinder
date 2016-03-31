@@ -145,6 +145,7 @@ if(UseBkg) get_background();
 resonanceIntegrals();
 for (int j = 0; j < n_scans; ++j)
 {
+	if (DoVerbose) std::cout<<"=== Scan no. "<< j <<std::endl;
 	if(j==0) en = rnd_minimum_scan;
 	else{
 		TRandom rand2(0);
@@ -168,8 +169,15 @@ for (int j = 0; j < n_scans; ++j)
 	}
     
 	hcounts.push_back(Compton_spectrum(j,en));
-	N_NRS.push_back(resonanceCounter());
-	delete Beam;
+
+	if (DoVerbose) std::cout<<"-BEAM DONE  = "<< en <<std::endl;
+
+	N_NRS.push_back(resonanceCounter(j));
+
+	if (DoVerbose) std::cout<<"-RESONANCE COUNTING DONE"<<std::endl;
+
+
+	if(!UseCompton) delete Beam;
 }
 
 if(DoVerbose) PlotResults(f_output);
@@ -198,7 +206,7 @@ TH1D* ResonanceSimulator::Compton_spectrum(int j, double en){
 TString thname = "hcounts";
 thname.Append(Form("%d",j));
 
-TH1D *temp_hcounts = new TH1D(thname,"Beam from Compton",ADC_channels,0,ADC_channels);
+TH1D *temp_hcounts = new TH1D(thname,"Beam from Compton",ADC_channels,E_min,E_max);
 
 double energy = E_min;
 
@@ -206,14 +214,18 @@ double energy = E_min;
 if(!UseCompton){
 for(int i = 0; i<ADC_channels; i++){
 	energy = energy + energy_per_channel;
-	temp_hcounts->Fill(i,Beam->Eval(energy));
+	temp_hcounts->Fill(energy,Beam->Eval(energy));
 	}
 }
 //if a input from compton is taken
 else{
-generate_compton_at_E(en,temp_hcounts, template_sigma);
+if (DoVerbose) std::cout<<"--Translating compton spectrum"<<std::endl;
+temp_hcounts = (TH1D*)generate_compton_at_E(en, template_sigma);
 }
+if (DoVerbose) std::cout<<"--Translated"<<std::endl;
 
+new TCanvas;
+temp_hcounts->Draw();
 
 return temp_hcounts;	
 }
@@ -229,14 +241,17 @@ for (size_t i = 0; i < E_reso.size(); ++i)
 return;
 }
 
-double ResonanceSimulator::resonanceCounter(){
+double ResonanceSimulator::resonanceCounter(int stepnumber){
 
 
 double N1 = 0;
 for (size_t i = 0; i < Inte.size(); ++i){
 	double energy = E_reso[i];
-	N1 = N1 + Inte[i]*Beam->Eval(energy); 
-	if(DoVerbose) std::cout<<"Energy = "<<E_reso[i]<<" Inte [i] = "<<Inte[i]<<" Beam = "<<Beam->Eval(energy)<<" -> N1 = "<<N1<<std::endl;
+	//N1 = N1 + Inte[i]*Beam->Eval(energy); 
+	TAxis *xaxis = hcounts[stepnumber]->GetXaxis();
+	Int_t binx = xaxis->FindBin(E_reso[i]);
+	N1 = N1 + Inte[i]*hcounts[stepnumber]->GetBinContent(binx)*100000000;
+	if(DoVerbose) std::cout<<"Energy = "<<E_reso[i]<<" Inte [i] = "<<Inte[i]<<" Beam = "<<hcounts[stepnumber]->GetBinContent(binx)<<" @ "<<binx<<" -> N1 = "<<N1<<std::endl;
 }
 
 //correct with target parameters
@@ -440,42 +455,58 @@ cout<<"Define a CB PDF"<<endl;
 cball = new RooCBShape("cball", "crystal ball", *x, *cbmean, *cbsigma, *alpha, *n);
 cball->fitTo(*dh);
 
+
+/*if(DoVerbose){
+RooPlot *xframe2 = x->frame() ;
+dh->plotOn(xframe2);
+cball->plotOn(xframe2);
+xframe2->Draw();
+}*/
+
+
 return start_sigma;	
 }
 
-void ResonanceSimulator::generate_compton_at_E(double en, TH1D *temp_hcounts, double start_sigma){
+TH1* ResonanceSimulator::generate_compton_at_E(double en, double start_sigma){
 //define a new randomized dataset
 
 Double_t cbmean_shifted_val = en;
 
+if (DoVerbose) std::cout<<"---Generating sp at EN = "<<en<<std::endl;
+
 RooRealVar *cbmean_shifted = new RooRealVar("cbmean","cbmean",cbmean_shifted_val,cbmean_shifted_val-start_sigma,cbmean_shifted_val+start_sigma);
 
+
+if (DoVerbose) std::cout<<"---new CBall "<<en<<std::endl;
 
 RooCBShape cball2("cball2", "crystal ball shifted", *x, *cbmean_shifted, *cbsigma, *alpha, *n);
 
 int nentries = hh->Integral();
+
+if (DoVerbose) std::cout<<"---Data2 = "<<en<<std::endl;
+
 RooDataHist *data2 = cball2.generateBinned(*x,nentries);
 
-TH1 *t_h = data2->createHistogram("t_h",ADC_channels);
-temp_hcounts = (TH1D*)t_h; 
+TH1 *t_h = data2->createHistogram("t_h",*x);
 
 
-
+if (DoVerbose) std::cout<<"--- Got h_temp "<<std::endl;
 
 //TH1* h2 = data2->createHistogram("dg2",x,Binning(size)); 
 //RooDataHist dh2("dh2","dh2",x,Import(*h2));
 
 //plot
-if(DoVerbose){
+/*if(DoVerbose){
 RooPlot *xframe2 = x->frame() ;
 dh->plotOn(xframe2);
 cball->plotOn(xframe2);
 data2->plotOn(xframe2,MarkerColor(2));
 xframe2->Draw();
-}
+
+}*/
 
 
-return;	
+return t_h;	
 }
 
 
