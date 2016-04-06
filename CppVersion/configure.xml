@@ -1,24 +1,24 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <root>
 <ADC 
-	E_MIN = "2.0"
-	E_MAX = "2.4"
+	E_MIN = "2.2"
+	E_MAX = "3.0"
 	ADC_CHANNELS = "1024"
 	>
 </ADC>
 <BEAM 
 	WIDTH = "0.005"
 	RUN_TIME = "100"
-	N_TOTAL = "1.0e10"
+	N_TOTAL = "3.2e8"
 	SIGMA_BEAM = "100"
-	SCAN_STEP = "0.001"
+	SCAN_STEP = "0.01"
 	N_SCANS = "10"
 	COMPTON_FILE = "Scan3MeV.root"
 	>
 </BEAM>
 <TARGET 
-	Z_TARGET = "0.15"
-	RHO_TARGET = "6.1e20"
+	Z_TARGET = "0.25"
+	RHO_TARGET = "6.04e22"
 	>
 </TARGET>
 <DETECTOR
@@ -27,10 +27,11 @@
 	>
 </DETECTOR>
 <RESONANCES>
+<!-- Al resonance at 2.982MeV -->
 	<RESONANCE
-		E_RESO = "3"
-		W_RESO = "6.2e-6"
-		I_RESO = "64"
+		E_RESO = "2.982"
+		W_RESO = "0.08e-6"
+		I_RESO = "159"
 		>
 	</RESONANCE>
 </RESONANCES>

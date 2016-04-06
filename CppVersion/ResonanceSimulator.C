@@ -168,7 +168,8 @@ for (int j = 0; j < n_scans; ++j)
 		make_a_beam(en);
 	}
     
-	hcounts.push_back(Compton_spectrum(j,en));
+    hmeas.push_back(Compton_spectrum(j,en).first);
+	hcounts.push_back(Compton_spectrum(j,en).second);
 
 	if (DoVerbose) std::cout<<"-BEAM DONE  = "<< en <<std::endl;
 
@@ -201,33 +202,47 @@ Beam->SetParameters(time_I, E_central, W_beam);
 }
 
 //extract a count spectrum from the beam function (as a TH1D)
-TH1D* ResonanceSimulator::Compton_spectrum(int j, double en){
+std::pair<TH1D*,TH1D*> ResonanceSimulator::Compton_spectrum(int j, double en){
 
-TString thname = "hcounts";
-thname.Append(Form("%d",j));
+TString thname1 = "hcounts";
+thname1.Append(Form("%d",j));
 
-TH1D *temp_hcounts = new TH1D(thname,"Beam from Compton",ADC_channels,E_min,E_max);
+TString thname2 = "hmeas";
+thname2.Append(Form("%d",j));
+
+TH1D *temp_hcounts = new TH1D(thname1,"Beam from Compton",ADC_channels,E_min,E_max);
+TH1D *temp_hmeas = new TH1D(thname2,"Compton spectrum",ADC_channels,E_min,E_max);
 
 double energy = E_min;
+std::pair<TH1D*,TH1D*> compton_pair;
+std::pair<TH1*,TH1*> c_pair;
+
 
 //if a gaussian beamer is set 
 if(!UseCompton){
 for(int i = 0; i<ADC_channels; i++){
 	energy = energy + energy_per_channel;
 	temp_hcounts->Fill(energy,Beam->Eval(energy));
+
 	}
 }
 //if a input from compton is taken
 else{
 if (DoVerbose) std::cout<<"--Translating compton spectrum"<<std::endl;
-temp_hcounts = (TH1D*)generate_compton_at_E(en, template_sigma);
+c_pair = generate_compton_at_E(en, template_sigma);
+temp_hcounts = (TH1D*)(c_pair.second);
+temp_hmeas = (TH1D*)(c_pair.first);
+
+	compton_pair.first = temp_hmeas;
+	compton_pair.second = temp_hcounts;
+
 }
 if (DoVerbose) std::cout<<"--Translated"<<std::endl;
 
 new TCanvas;
 temp_hcounts->Draw();
 
-return temp_hcounts;	
+return compton_pair;	
 }
 
 void ResonanceSimulator::resonanceIntegrals(){
@@ -235,7 +250,7 @@ for (size_t i = 0; i < E_reso.size(); ++i)
 	{
 	TF1 *Resonance = new TF1("Resonance","[0]*TMath::Gaus(x,[1],[2])",E_reso[i]-5*W_reso[i],E_reso[i]+5*W_reso[i]);
 	Resonance->SetParameters(I_reso[i],E_reso[i],W_reso[i]);
-	Inte.push_back(Resonance->Integral(E_reso[i]-5*W_reso[i],E_reso[i]+5*W_reso[i])*1.0e-24);
+	Inte.push_back(Resonance->Integral(E_reso[i]-5*W_reso[i],E_reso[i]+5*W_reso[i])*1.0e-24*1.0e6); //barn to cm2 correction, MeV-1 to eV-1 correction CHECK!!!
 	delete Resonance;
 	}
 return;
@@ -250,12 +265,13 @@ for (size_t i = 0; i < Inte.size(); ++i){
 	//N1 = N1 + Inte[i]*Beam->Eval(energy); 
 	TAxis *xaxis = hcounts[stepnumber]->GetXaxis();
 	Int_t binx = xaxis->FindBin(E_reso[i]);
-	N1 = N1 + Inte[i]*hcounts[stepnumber]->GetBinContent(binx)*100000000;
+	N1 = N1 + Inte[i]*hcounts[stepnumber]->GetBinContent(binx)*run_time*(1/(energy_per_channel*1.0e6));   //aggiungere energy_per_channel
 	if(DoVerbose) std::cout<<"Energy = "<<E_reso[i]<<" Inte [i] = "<<Inte[i]<<" Beam = "<<hcounts[stepnumber]->GetBinContent(binx)<<" @ "<<binx<<" -> N1 = "<<N1<<std::endl;
+	if(DoVerbose) std::cout<<"The compton spectrometer gives" <<hmeas[stepnumber]->GetBinContent(binx)<<"gammas in that channel"<<std::endl;
 }
 
 //correct with target parameters
-double N2 = N1*z_target*rho_target*Sigma_beam;
+double N2 = N1*z_target*rho_target;//*Sigma_beam;
 //correct with detector parameters
 double N3 = N2*detector_efficiency*detector_Omega;
 
@@ -286,7 +302,16 @@ std::vector<std::vector<double> > ResonanceSimulator::GetSpectra(){
 
 std::vector<std::vector<double> > final_vector;
 
-for (size_t i = 0; i < hcounts.size(); ++i){
+for (size_t i = 0; i < hmeas.size(); ++i){
+	std::vector<double> value_vec;
+	for (int j = 0; j < hmeas[i]->GetSize()-2; ++j){
+			double c_value = hmeas[i]->GetBinContent(j+1);
+			value_vec.push_back(c_value);
+		}
+	final_vector.push_back(value_vec);
+	}
+
+/*for (size_t i = 0; i < hcounts.size(); ++i){
 	std::vector<double> value_vec;
 	for (int j = 0; j < hcounts[i]->GetSize()-2; ++j){
 			double c_value = hcounts[i]->GetBinContent(j+1);
@@ -294,6 +319,7 @@ for (size_t i = 0; i < hcounts.size(); ++i){
 		}
 	final_vector.push_back(value_vec);
 	}
+*/
 
 return final_vector;
 }
@@ -407,11 +433,15 @@ if(DoVerbose){
 	std::cout<<"ADC_channels was previously set to: "<<ADC_channels<<". Using recorded Compton spectra --> force ADC_channels to: "<<size<<std::endl;
 	std::cout<<"E_min was previously set to: "<<E_min<<". Using recorded Compton spectra --> force E_min to: "<<hh->GetXaxis()->GetBinCenter(1)<<std::endl;
 	std::cout<<"E_max was previously set to: "<<E_max<<". Using recorded Compton spectra --> force E_max to: "<<hh->GetXaxis()->GetBinCenter(size-1)<<std::endl;
+
 }
 ADC_channels = size;
 E_min = hh->GetXaxis()->GetBinCenter(1);
 E_max = hh->GetXaxis()->GetBinCenter(size-1);
 
+if(DoVerbose) std::cout<<"energy_per_channel was previously set to: "<<energy_per_channel<<". Using recorded Compton spectra --> force to: "<<(E_max - E_min)/ADC_channels<<std::endl;
+
+energy_per_channel = (E_max - E_min)/ADC_channels;
 
 //get some starting values for the fit 
 double hmin = hh->GetXaxis()->GetXmin();
@@ -467,7 +497,7 @@ xframe2->Draw();
 return start_sigma;	
 }
 
-TH1* ResonanceSimulator::generate_compton_at_E(double en, double start_sigma){
+std::pair<TH1*,TH1*> ResonanceSimulator::generate_compton_at_E(double en, double start_sigma){
 //define a new randomized dataset
 
 Double_t cbmean_shifted_val = en;
@@ -485,12 +515,28 @@ int nentries = hh->Integral();
 
 if (DoVerbose) std::cout<<"---Data2 = "<<en<<std::endl;
 
-RooDataHist *data2 = cball2.generateBinned(*x,nentries);
+RooDataHist *data2 = cball2.generateBinned(*x,nentries*run_time);
 
-TH1 *t_h = data2->createHistogram("t_h",*x);
+
+long int ntot = (long int)N_total;
+if (DoVerbose) std::cout<<"---Data3  on "<<ntot<<" elements"<<std::endl;
+
+
+RooDataHist *data3 = cball2.generateBinned(*x,ntot);
+
+if (DoVerbose) std::cout<<"---generated"<<std::endl;
+
+
+
+TH1 *t_h2 = data2->createHistogram("t_h2",*x);
+TH1 *t_h3 = data3->createHistogram("t_h3",*x);
 
 
 if (DoVerbose) std::cout<<"--- Got h_temp "<<std::endl;
+
+std::pair<TH1*,TH1*> th_pair;
+th_pair.first = t_h2;
+th_pair.second = t_h3;
 
 //TH1* h2 = data2->createHistogram("dg2",x,Binning(size)); 
 //RooDataHist dh2("dh2","dh2",x,Import(*h2));
@@ -506,7 +552,7 @@ xframe2->Draw();
 }*/
 
 
-return t_h;	
+return th_pair;	
 }
 
 

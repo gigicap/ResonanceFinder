@@ -37,7 +37,9 @@ void ResonanceFinder(bool IsSimulation, bool IsCompton, bool IsVerbose, TFile *f
 int N_channels = 0;
 int N_scans = 0;
 
-double NRS_CUT = 1000.0;
+//double NRS_CUT = 1000.0;
+double NRS_CUT = 10.0;
+
 
 if (IsVerbose) std::cout<<"---Start resonance finder"<<std::endl;
 
@@ -150,7 +152,7 @@ TCanvas *can2 = new TCanvas("canvasout","",1200,500);
 can2->Divide(2,1);
 can2->cd(1);
 TMultiGraph *mg0 = new TMultiGraph();
-mg0->Add(gr,"3l");
+mg0->Add(gr,"l");
 mg0->Add(gmin,"p");
 
 mg0->Draw("a");
