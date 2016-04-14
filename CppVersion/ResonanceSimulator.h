@@ -30,6 +30,8 @@
 #include "RooCBShape.h"
 #include "RooDataHist.h"
 #include "RooPlot.h"
+#include "RooBukinPdf.h"
+
 
 using namespace std;
 using namespace RooFit; 
@@ -78,6 +80,7 @@ class ResonanceSimulator{
 		TF1 *Beam;
 		TH1D *hbkg;
 		TH1D *hh;
+		TH1D *hb;
 
 		ResonanceSimulator(bool,bool,bool);
 		~ResonanceSimulator();
@@ -91,8 +94,10 @@ class ResonanceSimulator{
 
 		double generate_compton_template();			//read a comptoon spectrum and store into a CB template
 		std::pair<TH1*,TH1*> generate_compton_at_E(double, double);	//tranlate the CB and generate a new compton spectrum at enetgy E 
-		RooCBShape *cball;							//crystalball for compton template
+		RooCBShape *cball;
+		RooBukinPdf	*bukin;						//crystalball for compton template
 		//Roofit stuff
+
 		RooRealVar *x;
 		RooRealVar *cbmean;
 		RooRealVar *cbsigma;
@@ -100,6 +105,14 @@ class ResonanceSimulator{
 		RooRealVar *n;
 		RooDataHist *dh;
 		double template_sigma;
+
+		RooRealVar *beammean;
+		RooRealVar *beamsigma;
+		RooRealVar *beamxi;
+		RooRealVar *beamrho1;
+		RooRealVar *beamrho2;
+		RooDataHist *dbeam;
+
 
 		//get outputs
 		std::vector<std::vector<double> > GetSpectra();

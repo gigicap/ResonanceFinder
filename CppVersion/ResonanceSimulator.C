@@ -62,7 +62,8 @@ hbkg = (TH1D*)fb->Get("hbackground");
 
 if(UseCompton){
 TFile *fc = new TFile(compton_file,"READ");
-hh = (TH1D*)fc->Get("SignalMacroEBeam");
+hh = (TH1D*)fc->Get("eBeamStep5");
+hb = (TH1D*)fc->Get("newEnergy");
 template_sigma  = generate_compton_template();	
 }
 
@@ -248,10 +249,11 @@ return compton_pair;
 void ResonanceSimulator::resonanceIntegrals(){
 for (size_t i = 0; i < E_reso.size(); ++i)
 	{
-	TF1 *Resonance = new TF1("Resonance","[0]*TMath::Gaus(x,[1],[2])",E_reso[i]-5*W_reso[i],E_reso[i]+5*W_reso[i]);
-	Resonance->SetParameters(I_reso[i],E_reso[i],W_reso[i]);
-	Inte.push_back(Resonance->Integral(E_reso[i]-5*W_reso[i],E_reso[i]+5*W_reso[i])*1.0e-24*1.0e6); //barn to cm2 correction, MeV-1 to eV-1 correction CHECK!!!
-	delete Resonance;
+	//TF1 *Resonance = new TF1("Resonance","[0]*TMath::Gaus(x,[1],[2])",E_reso[i]-5*W_reso[i],E_reso[i]+5*W_reso[i]);
+	//Resonance->SetParameters(I_reso[i],E_reso[i],W_reso[i]);
+	//Inte.push_back(Resonance->Integral(E_reso[i]-5*W_reso[i],E_reso[i]+5*W_reso[i])*1.0e-24*1.0e6); //barn to cm2 correction, MeV-1 to eV-1 correction CHECK!!!
+	Inte.push_back(I_reso[i]*1.0e-24);
+	//delete Resonance;
 	}
 return;
 }
@@ -271,9 +273,9 @@ for (size_t i = 0; i < Inte.size(); ++i){
 }
 
 //correct with target parameters
-double N2 = N1*z_target*rho_target;//*Sigma_beam;
+double N2 = N1*rho_target;//*Sigma_beam;
 //correct with detector parameters
-double N3 = N2*detector_efficiency*detector_Omega;
+double N3 = N2*detector_efficiency; //*detector_Omega;  //Omega is already included in the efficinecy 
 
 //add background 
 double N_t = N3+random_background(N_background);
@@ -435,6 +437,8 @@ if(DoVerbose){
 	std::cout<<"E_max was previously set to: "<<E_max<<". Using recorded Compton spectra --> force E_max to: "<<hh->GetXaxis()->GetBinCenter(size-1)<<std::endl;
 
 }
+
+
 ADC_channels = size;
 E_min = hh->GetXaxis()->GetBinCenter(1);
 E_max = hh->GetXaxis()->GetBinCenter(size-1);
@@ -486,13 +490,27 @@ cball = new RooCBShape("cball", "crystal ball", *x, *cbmean, *cbsigma, *alpha, *
 cball->fitTo(*dh);
 
 
+
+
+//now fit the beam
+beammean = new RooRealVar("beammean","beammean",3.0,2.9,3.01);
+beamsigma = new RooRealVar("beamsigma","beamsigma",0.01,0.0,0.5);
+beamxi = new RooRealVar("beamxi","beamxi",0.,-10.,10.);     //peak asymmetry parameter 
+beamrho1 = new RooRealVar("beamrho1","beamrho1",0.,-1.,50.);   //left tail
+beamrho2 = new RooRealVar("beamrho2","beamrho2",-50.,-120.,50.);  //right tail
+
+dbeam = new RooDataHist("dbeam","dbeam",*x,Import(*hb));
+cout<<"Define a Bukin PDF"<<endl;
+
+bukin = new RooBukinPdf("bukin","bukin",*x, *beammean, *beamsigma, *beamxi, *beamrho1, *beamrho2);
+bukin->fitTo(*dbeam);
+
 /*if(DoVerbose){
 RooPlot *xframe2 = x->frame() ;
 dh->plotOn(xframe2);
 cball->plotOn(xframe2);
 xframe2->Draw();
 }*/
-
 
 return start_sigma;	
 }
@@ -501,10 +519,12 @@ std::pair<TH1*,TH1*> ResonanceSimulator::generate_compton_at_E(double en, double
 //define a new randomized dataset
 
 Double_t cbmean_shifted_val = en;
+Double_t beammean_shifted_val = en;			//this has to be checked!
 
 if (DoVerbose) std::cout<<"---Generating sp at EN = "<<en<<std::endl;
 
 RooRealVar *cbmean_shifted = new RooRealVar("cbmean","cbmean",cbmean_shifted_val,cbmean_shifted_val-start_sigma,cbmean_shifted_val+start_sigma);
+RooRealVar *beammean_shifted = new RooRealVar("beammean","beammean",beammean_shifted_val,beammean_shifted_val-0.1,beammean_shifted_val+0.01);
 
 
 if (DoVerbose) std::cout<<"---new CBall "<<en<<std::endl;
@@ -515,14 +535,20 @@ int nentries = hh->Integral();
 
 if (DoVerbose) std::cout<<"---Data2 = "<<en<<std::endl;
 
-RooDataHist *data2 = cball2.generateBinned(*x,nentries*run_time);
+RooDataHist *data2 = cball2.generateBinned(*x,nentries*((int)(run_time/100)));
 
 
 long int ntot = (long int)N_total;
 if (DoVerbose) std::cout<<"---Data3  on "<<ntot<<" elements"<<std::endl;
 
+//Use a bukin function to simulate the actual beam 
 
-RooDataHist *data3 = cball2.generateBinned(*x,ntot);
+RooBukinPdf bukin2("bukin2", "bukin shifted beam", *x, *cbmean_shifted, *beamsigma, *beamxi, *beamrho1, *beamrho2);
+
+if (DoVerbose) std::cout<<"---bukin2 generated"<<std::endl;
+
+
+RooDataHist *data3 = bukin2.generateBinned(*x,ntot);
 
 if (DoVerbose) std::cout<<"---generated"<<std::endl;
 

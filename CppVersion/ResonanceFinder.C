@@ -38,7 +38,8 @@ int N_channels = 0;
 int N_scans = 0;
 
 //double NRS_CUT = 1000.0;
-double NRS_CUT = 10.0;
+double NRS_CUT = 1000.0;
+double tail_CUT = 0.05;
 
 
 if (IsVerbose) std::cout<<"---Start resonance finder"<<std::endl;
@@ -80,12 +81,18 @@ for (size_t i = 0; i < N_scans; ++i) std::cout<<"Scan "<<i<<" - NRS = \t"<<NRSco
 double scan_matrix[N_scans][N_channels];
 double error_matrix[N_scans][N_channels];
 
+//fill scan matrix and check for scans to be skipped (too few NRS, too in tail)
+
+int dontuse[N_scans];
+for (int i = 0; i < N_scans; ++i)
+	dontuse[i] = 0;
 
 for (int i = 0; i < N_scans; i++){
 	for(size_t j = 0; j<N_channels; j++){
-		if (NRScounts[i] < NRS_CUT){
+		if (NRScounts[i] < NRS_CUT){  //too few NRS
 		scan_matrix[i][j] = 0;
 		error_matrix[i][j] = 0;
+		dontuse[i] = 1; 		//skip this scan 
 		}
 		else{
 		scan_matrix[i][j] = ComptonSpectra[i][j]/(NRScounts[i]);
@@ -94,9 +101,19 @@ for (int i = 0; i < N_scans; i++){
 	}
 }
 
+//too in tail 
+for (int i = 0; i < N_scans; ++i)
+{
+	int j = 0;
+	while(scan_matrix[i][j]<tail_CUT && j<N_channels)
+		j++;
+	if(j<N_channels-1) dontuse[i] = 1;
+}
+
+
 double delta[N_channels];
 double deltaerr[N_channels];
-
+/*
 for (int j = 0; j < N_channels; ++j){
 	double minval = 10e22;
 	double maxval = -10e22;
@@ -115,6 +132,27 @@ for (int j = 0; j < N_channels; ++j){
 	delta[j] = maxval - minval;
 	deltaerr[j] = sqrt(error1*error1 + error2*error2);
 }
+*/
+
+//average method 
+for (int j = 0; j < N_channels; ++j){
+int st_counts = 0;
+double sum = 0;
+	for (int s = 0; s < N_scans; ++s)
+	{
+		for (int t = s; t < N_scans; ++t)
+		{
+		 if(dontuse[s]==0 && dontuse[t]==0){
+			sum = sum + abs(scan_matrix[s][j] - scan_matrix[t][j]);
+			st_counts++;
+			}
+		}
+	}
+if (st_counts!=0) delta[j] = sum/st_counts;
+else delta[j] = 0;
+deltaerr[j] = 0;
+}
+
 
 std::vector<int> min_indices;
 find_minima(N_channels, delta, &min_indices);

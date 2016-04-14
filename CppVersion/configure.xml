@@ -13,30 +13,29 @@
 	SIGMA_BEAM = "100"
 	SCAN_STEP = "0.01"
 	N_SCANS = "10"
-	COMPTON_FILE = "Scan3MeV.root"
+	COMPTON_FILE = "3MeVComptonSimulation.root"
 	>
 </BEAM>
 <TARGET 
 	Z_TARGET = "0.25"
-	RHO_TARGET = "6.04e22"
+	RHO_TARGET = "1.51e22"
 	>
 </TARGET>
 <DETECTOR
-	DETECTOR_EFFICIENCY = "0.17"
+	DETECTOR_EFFICIENCY = "0.012"
 	DETECTOR_OMEGA = "0.5"
 	>
 </DETECTOR>
 <RESONANCES>
-<!-- Al resonance at 2.982MeV -->
 	<RESONANCE
 		E_RESO = "2.982"
 		W_RESO = "0.08e-6"
-		I_RESO = "159"
+		I_RESO = "31.9"
 		>
 	</RESONANCE>
 </RESONANCES>
 <BACKGROUND
-	N_BACKGROUND = "0"
+	N_BACKGROUND = "500"
 	E_CUT = "1.8"
 	BACKGOUND_FILE = "background.root"
 	>
